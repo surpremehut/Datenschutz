@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 /* ─── COLOR MAP ─────────────────────────────────────────────────────────── */
 const MC  = ["purple","teal","blue","amber","coral"];
@@ -218,6 +218,9 @@ export default function App() {
   const [reveal, setReveal] = useState(false);
   const [toast,  setToast]  = useState(null);
   const [bonus,  setBonus]  = useState(0);
+  const [cheatUnlocked, setCheatUnlocked] = useState(false);
+  const cheatClicks = useRef(0);
+  const cheatClickTimer = useRef(null);
 
   const mod    = MODS[mi];
   const col    = MC[mi];
@@ -225,7 +228,36 @@ export default function App() {
   const lvIdx  = LEVELS.reduce((a,l,i) => xp >= l.min ? i : a, 0);
   const lv     = LEVELS[lvIdx];
   const lvPct  = Math.min(100, Math.round(((xp - lv.min) / (lv.next - lv.min)) * 100));
-  const cheat  = done.size >= 3;
+  const cheat  = cheatUnlocked || done.size >= 3;
+
+  function onNavClick(n) {
+    const locked = n.s === "cheatsheet" && !cheat;
+    if (!locked) {
+      setNav(n.s);
+      return;
+    }
+
+    cheatClicks.current += 1;
+    if (cheatClickTimer.current) clearTimeout(cheatClickTimer.current);
+    cheatClickTimer.current = setTimeout(() => {
+      cheatClicks.current = 0;
+      cheatClickTimer.current = null;
+    }, 700);
+
+    if (cheatClicks.current >= 3) {
+      setCheatUnlocked(true);
+      setNav("cheatsheet");
+      showToast({
+        icon: "ti ti-file-text",
+        title: "Cheatsheet freigeschaltet",
+        desc: "Du hast das Cheatsheet mit 3 schnellen Klicks direkt freigeschaltet!",
+        c: "purple"
+      });
+      cheatClicks.current = 0;
+      clearTimeout(cheatClickTimer.current);
+      cheatClickTimer.current = null;
+    }
+  }
 
   function showToast(b) { setToast(b); setTimeout(() => setToast(null), 3500); }
   function earn(id) {
@@ -343,7 +375,7 @@ export default function App() {
         {[{s:"home", icon:"ti-home", label:"Dashboard"}, {s:"achievements", icon:"ti-medal", label:"Achievements"}, {s:"cheatsheet", icon:"ti-file-text", label:"Cheatsheet"}].map(n => {
           const locked = n.s === "cheatsheet" && !cheat;
           const active = nav === n.s && nav !== "module";
-          return <button key={n.s} onClick={() => !locked && setNav(n.s)} disabled={locked} style={{fontSize:12, opacity: locked ? 0.45 : 1, ...(active ? {background:MBG.purple, color:MT.purple, borderColor:MB.purple} : {})}}><i className={`ti ${n.icon}`} style={{fontSize:13}} aria-hidden="true"/>{n.label}{locked && " (ab 3 Modulen)"}</button>;
+          return <button key={n.s} onClick={() => onNavClick(n)} style={{fontSize:12, opacity: locked ? 0.45 : 1, ...(active ? {background:MBG.purple, color:MT.purple, borderColor:MB.purple} : {})}} aria-disabled={locked}><i className={`ti ${n.icon}`} style={{fontSize:13}} aria-hidden="true"/>{n.label}{locked && " (ab 3 Modulen)"}</button>;
         })}
       </div>
 
